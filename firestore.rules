@@ -1,0 +1,142 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function participanteVerificado() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.matches('^[^@]+@uceva\\.edu\\.co$');
+    }
+
+    match /participantes/{uid} {
+      allow get: if participanteVerificado() && request.auth.uid == uid;
+      allow list: if false;
+
+      allow create: if participanteVerificado()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'uid', 'correo', 'programa', 'semestre', 'consentimientoAceptado',
+          'versionConsentimiento', 'fechaConsentimiento'
+        ])
+        && request.resource.data.uid == uid
+        && request.resource.data.correo == request.auth.token.email
+        && request.resource.data.programa is string
+        && request.resource.data.programa.size() <= 100
+        && request.resource.data.semestre is int
+        && request.resource.data.semestre >= 1
+        && request.resource.data.semestre <= 15
+        && request.resource.data.consentimientoAceptado == true
+        && request.resource.data.versionConsentimiento == 'v2'
+        && request.resource.data.fechaConsentimiento == request.time;
+
+      allow update, delete: if false;
+    }
+
+    match /modulos/{moduloId} {
+      allow read: if participanteVerificado();
+      allow write: if false;
+    }
+
+    match /participantes/{uid}/resultados/{resultadoId} {
+      function esPropietario() {
+        return participanteVerificado() && request.auth.uid == uid;
+      }
+
+      function perfilConConsentimiento() {
+        return exists(
+          /databases/$(database)/documents/participantes/$(uid)
+        ) && get(
+          /databases/$(database)/documents/participantes/$(uid)
+        ).data.consentimientoAceptado == true;
+      }
+
+      allow get, list: if esPropietario();
+
+      // Violentómetro.
+      allow create: if esPropietario()
+        && perfilConConsentimiento()
+        && request.resource.data.keys().hasAll([
+          'modulo', 'contexto', 'puntaje', 'nivel', 'fecha', 'versionAlgoritmo'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'modulo', 'contexto', 'puntaje', 'nivel', 'fecha', 'versionAlgoritmo'
+        ])
+        && request.resource.data.modulo == 'violentometro'
+        && request.resource.data.contexto in [
+          'pareja', 'familia', 'amistad', 'compañeros de estudio',
+          'trabajo', 'companeros', 'laboral'
+        ]
+        && request.resource.data.puntaje is int
+        && request.resource.data.puntaje >= 21
+        && request.resource.data.puntaje <= 105
+        && request.resource.data.nivel in [
+          'sin_riesgo', 'medio', 'alto', 'critico'
+        ]
+        && request.resource.data.fecha == request.time
+        && request.resource.data.versionAlgoritmo == '1.0';
+
+      // Bienestar emocional.
+      allow create: if esPropietario()
+        && perfilConConsentimiento()
+        && request.resource.data.keys().hasAll([
+          'modulo', 'puntaje', 'nivel', 'fecha', 'versionAlgoritmo'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'modulo', 'puntaje', 'nivel', 'fecha', 'versionAlgoritmo'
+        ])
+        && request.resource.data.modulo == 'bienestar_emocional'
+        && request.resource.data.puntaje is int
+        && request.resource.data.puntaje >= 21
+        && request.resource.data.puntaje <= 105
+        && request.resource.data.fecha == request.time
+        && request.resource.data.versionAlgoritmo == '1.0'
+        && (
+          (request.resource.data.puntaje <= 42
+            && request.resource.data.nivel == 'fortalecido')
+          || (request.resource.data.puntaje > 42
+            && request.resource.data.puntaje <= 63
+            && request.resource.data.nivel == 'estable')
+          || (request.resource.data.puntaje > 63
+            && request.resource.data.puntaje <= 84
+            && request.resource.data.nivel == 'seguimiento')
+          || (request.resource.data.puntaje > 84
+            && request.resource.data.nivel == 'atencion')
+        );
+
+      // Carga académica.
+      allow create: if esPropietario()
+        && perfilConConsentimiento()
+        && request.resource.data.keys().hasAll([
+          'modulo', 'puntaje', 'nivel', 'fecha', 'versionAlgoritmo'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'modulo', 'puntaje', 'nivel', 'fecha', 'versionAlgoritmo'
+        ])
+        && request.resource.data.modulo == 'carga_academica'
+        && request.resource.data.puntaje is int
+        && request.resource.data.puntaje >= 18
+        && request.resource.data.puntaje <= 90
+        && request.resource.data.fecha == request.time
+        && request.resource.data.versionAlgoritmo == '1.0'
+        && (
+          (request.resource.data.puntaje <= 36
+            && request.resource.data.nivel == 'baja')
+          || (request.resource.data.puntaje > 36
+            && request.resource.data.puntaje <= 54
+            && request.resource.data.nivel == 'moderada')
+          || (request.resource.data.puntaje > 54
+            && request.resource.data.puntaje <= 72
+            && request.resource.data.nivel == 'alta')
+          || (request.resource.data.puntaje > 72
+            && request.resource.data.nivel == 'critica')
+        );
+
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

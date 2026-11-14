@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "980449712715",
+    "project_id": "sbe-movil-uceva",
+    "storage_bucket": "sbe-movil-uceva.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:980449712715:android:df20f31e59cd9db720cbce",
+        "android_client_info": {
+          "package_name": "edu.uceva.sbe_movil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGdgAIyxqqDgaWYBGHRh8-gOaLsPa3Fis"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
